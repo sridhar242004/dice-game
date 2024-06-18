@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dice Game - Multiplayer</title>
+   <style>
+    body {
+        font-family: Arial, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background-color: #131313;
+    }
+    
+    .container {
+        text-align: center;
+        background-color: #07b2f6;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        max-width: 600px;
+        width: 100%;
+    }
+    
+    h1 {
+        font-size: 24px;
+    }
+    
+    #dice {
+        display: flex;
+        justify-content: space-around;
+        margin: 20px 0;
+    }
+    
+    #dice img {
+        width: 80px;
+        height: 80px;
+        transition: transform 0.5s ease; /* Adding transition for dice roll animation */
+    }
+    
+    button {
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+        background-color: #007bff;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        transition: background-color 0.3s ease;
+        margin: 10px;
+    }
+    
+    button:hover {
+        background-color: #0056b3;
+    }
+    
+    p {
+        font-size: 18px;
+    }
+    
+    .result-message {
+        font-size: 20px;
+        font-weight: bold;
+        margin-top: 20px;
+    }
+
+    .player-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+
+    .player-info input {
+        padding: 5px;
+        font-size: 14px;
+    }
+
+    .player-name {
+        font-weight: bold;
+        margin-right: 10px;
+    }
+    
+    @media (max-width: 500px) {
+        /* Adjusting styles for smaller screens */
+        #dice img {
+            width: 60px;
+            height: 60px;
+        }
+    }
+   </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Dice Game - Multiplayer</h1>
+        <div class="player-info">
+            <label class="player-name">Player 1:</label>
+            <input type="text" id="player1Name" value="Player 1">
+        </div>
+        <div class="player-info">
+            <label class="player-name">Player 2:</label>
+            <input type="text" id="player2Name" value="Player 2">
+        </div>
+        <div id="dice">
+            <img id="die1" src="dice-1.png" alt="Die 1">
+            <img id="die2" src="dice-1.png" alt="Die 2">
+        </div>
+        <button id="rollBtn">Roll Dice</button>
+        <button id="resetBtn">Reset Game</button>
+        <p id="roundScore">Round Score: 0</p>
+        <p id="totalScore1">Total Score: 0 (Player 1)</p>
+        <p id="totalScore2">Total Score: 0 (Player 2)</p>
+        <p id="roundsPlayed">Rounds Played: 0</p>
+        <div class="result-message" id="resultMessage"></div>
+        <input type="range" id="volumeControl" min="0" max="1" step="0.1" value="1">
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const diceImages = [
+                "/dice-1.png",
+                "/dice-2.png",
+                "/dice-3.png",
+                "/dice-4.png",
+                "/dice-5.png",
+                "/dice-6.png"
+            ];
+        
+            const rollSound = new Audio("/roll.mp3");
+            const resetSound = new Audio("/reset.mp3");
+        
+            const die1 = document.getElementById("die1");
+            const die2 = document.getElementById("die2");
+            const rollBtn = document.getElementById("rollBtn");
+            const resetBtn = document.getElementById("resetBtn");
+            const roundScore = document.getElementById("roundScore");
+            const totalScore1 = document.getElementById("totalScore1");
+            const totalScore2 = document.getElementById("totalScore2");
+            const roundsPlayed = document.getElementById("roundsPlayed");
+            const resultMessage = document.getElementById("resultMessage");
+            const volumeControl = document.getElementById("volumeControl");
+            const player1NameInput = document.getElementById("player1Name");
+            const player2NameInput = document.getElementById("player2Name");
+        
+            let currentPlayer = 1;
+            let player1Score = 0;
+            let player2Score = 0;
+            let roundsCount = 0;
+            const maxRounds = 20; // Change this to set the maximum rounds
+        
+            // Load game state from local storage if available
+            loadGame();
+        
+            rollBtn.addEventListener("click", function() {
+                if (roundsCount < maxRounds) {
+                    const roll1 = Math.floor(Math.random() * 6) + 1;
+                    const roll2 = Math.floor(Math.random() * 6) + 1;
+        
+                    // Add rolling animation
+                    rollDice(die1);
+                    rollDice(die2);
+        
+                    setTimeout(() => {
+                        die1.src = diceImages[roll1 - 1];
+                        die2.src = diceImages[roll2 - 1];
+        
+                        const roundTotal = roll1 + roll2;
+                        updateScores(roundTotal);
+        
+                        roundsCount++;
+        
+                        roundScore.textContent = `Round Score: ${roundTotal}`;
+                        roundsPlayed.textContent = `Rounds Played: ${roundsCount}`;
+        
+                        if (roundsCount === maxRounds) {
+                            endGame();
+                        }
+                    }, 500); // Delay to sync with CSS animation duration
+                }
+            });
+        
+            resetBtn.addEventListener("click", function() {
+                resetGame();
+            });
+        
+            function rollDice(die) {
+                die.style.transform = "rotateY(360deg)";
+        
+                // Reset transform after animation ends
+                die.addEventListener("transitionend", function() {
+                    die.style.transform = "none";
+                });
+        
+                // Play rolling sound effect
+                playSound("roll");
+            }
+        
+            function playSound(sound) {
+                const audio = sound === "roll" ? rollSound : resetSound;
+                audio.currentTime = 0; // Reset audio playback to start
+                audio.volume = volumeControl.value;
+                audio.play().catch(error => {
+                    console.error('Error playing sound:', error);
+                });
+            }
+        
+            function updateScores(roundTotal) {
+                if (currentPlayer === 1) {
+                    player1Score += roundTotal;
+                    totalScore1.textContent = `Total Score: ${player1Score} (${player1NameInput.value})`;
+                } else {
+                    player2Score += roundTotal;
+                    totalScore2.textContent = `Total Score: ${player2Score} (${player2NameInput.value})`;
+                }
+        
+                currentPlayer = currentPlayer === 1 ? 2 : 1;
+            }
+        
+            function endGame() {
+                let message = "";
+                if (player1Score > player2Score) {
+                    message = `${player1NameInput.value} wins with ${player1Score} points!`;
+                } else if (player2Score > player1Score) {
+                    message = `${player2NameInput.value} wins with ${player2Score} points!`;
+                } else {
+                    message = "It's a tie!";
+                }
+                resultMessage.textContent = message;
+                resultMessage.style.display = "block";
+        
+                saveGame();
+                
+                // Clear localStorage after game ends
+                localStorage.removeItem("player1Name");
+                localStorage.removeItem("player2Name");
+                localStorage.removeItem("player1Score");
+                localStorage.removeItem("player2Score");
+                localStorage.removeItem("roundsCount");
+            }
+        
+            function resetGame() {
+                player1Score = 0;
+                player2Score = 0;
+                roundsCount = 0;
+                currentPlayer = 1;
+        
+                die1.src = "dice-1.png";
+                die2.src = "dice-1.png";
+                roundScore.textContent = `Round Score: 0`;
+                totalScore1.textContent = `Total Score: 0 (${player1NameInput.value})`;
+                totalScore2.textContent = `Total Score: 0 (${player2NameInput.value})`;
+                roundsPlayed.textContent = `Rounds Played: 0`;
+                resultMessage.textContent = "";
+                resultMessage.style.display = "none";
+        
+                loadGame(); // Reset player names
+        
+                                // Clear localStorage when resetting the game
+                                localStorage.removeItem("player1Name");
+                                localStorage.removeItem("player2Name");
+                                localStorage.removeItem("player1Score");
+                                localStorage.removeItem("player2Score");
+                                localStorage.removeItem("roundsCount");
+                            }
+                        
+                            function saveGame() {
+                                localStorage.setItem("player1Name", player1NameInput.value);
+                                localStorage.setItem("player2Name", player2NameInput.value);
+                                localStorage.setItem("player1Score", player1Score);
+                                localStorage.setItem("player2Score", player2Score);
+                                localStorage.setItem("roundsCount", roundsCount);
+                            }
+                        
+                            function loadGame() {
+                                const savedPlayer1Name = localStorage.getItem("player1Name");
+                                const savedPlayer2Name = localStorage.getItem("player2Name");
+                                const savedPlayer1Score = parseInt(localStorage.getItem("player1Score")) || 0;
+                                const savedPlayer2Score = parseInt(localStorage.getItem("player2Score")) || 0;
+                                const savedRoundsCount = parseInt(localStorage.getItem("roundsCount")) || 0;
+                        
+                                player1NameInput.value = savedPlayer1Name || "Player 1";
+                                player2NameInput.value = savedPlayer2Name || "Player 2";
+                                player1Score = savedPlayer1Score;
+                                player2Score = savedPlayer2Score;
+                                roundsCount = savedRoundsCount;
+                        
+                                // Update UI with loaded values
+                                totalScore1.textContent = `Total Score: ${player1Score} (${player1NameInput.value})`;
+                                totalScore2.textContent = `Total Score: ${player2Score} (${player2NameInput.value})`;
+                                roundsPlayed.textContent = `Rounds Played: ${roundsCount}`;
+                            }
+                        });
+                    </script>
+                </body>
+                </html>
+                
